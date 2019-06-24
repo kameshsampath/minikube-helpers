@@ -1,0 +1,123 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: m2-cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: helloworld-image
+spec:
+  type: image
+  params:
+  - name: url
+    value: dev.local/example/helloworld
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: helloworld-image-from-git
+spec:
+ inputs:
+  resources:
+    - name: git-source
+      type: git
+  params:
+    - name: contextDir
+      default: /workspace/git-source
+      description: The Docker build context Dir
+    - name: mavenMirrorUrl
+      default: ""
+      description: The MAVEN_MIRROR_URL url to use
+    - name: mavenCmdArgs
+      default: "clean -DskipTests install"
+      description: The maven command parameter
+    - name: runScript
+      default: "/usr/local/bin/maven-buildah.sh"
+      description: The script to use during 
+    - name: push
+      default: "true"
+      description: Whether to push the image to container registry or not
+ outputs:
+  resources:
+    - name: builtImage
+      type: image
+ steps:
+    - name: buildah-build-push
+      image: quay.io/rhdevelopers/quarkus-java-builder
+      imagePullPolicy: IfNotPresent
+      env:
+      - name: MAVEN_MIRROR_URL
+        value: "${inputs.params.mavenMirrorUrl}"
+      - name: WORK_DIR
+        value: "${inputs.params.contextDir}"
+      - name: PUSH
+        value: "${inputs.params.push}"
+      - name: MVN_CMD_ARGS
+        value: "${inputs.params.mavenCmdArgs}"
+      - name: DESTINATION_NAME
+        value: ${outputs.resources.builtImage.url}
+      args:
+       - "${inputs.params.runScript}"
+      securityContext:
+        privileged: true
+        capabilities:
+          add: ["SYS_ADMIN"]
+      volumeMounts:
+        - mountPath: /root/.m2
+          name: m2-cache
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+      workingDir: "${inputs.params.contextDir}"
+    - name: update-image-url
+      image: quay.io/rhdevelopers/tutorial-tools
+      imagePullPolicy: IfNotPresent
+      command: 
+       - "yq"
+      args:
+        - "w"
+        - "-i"
+        - "registry/example/deployment.yaml"  
+        - "spec.template.spec.containers[0].image"
+        - "${outputs.resources.builtImage.url}"
+        - "-d*"
+      workingDir: "${inputs.params.contextDir}"
+    - name: run-kubectl
+      image: quay.io/rhdevelopers/tutorial-tools
+      imagePullPolicy: IfNotPresent
+      command: 
+       - "kubectl"
+      args:
+        - "apply"
+        - "--filename"
+        - "registry/example/deployment.yaml"      
+      workingDir: "${inputs.params.contextDir}"
+ volumes:
+    - name: m2-cache
+      persistentVolumeClaim:
+        claimName: m2-cache
+    - name: varlibcontainers
+      emptyDir: {}
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: hello-world-maven
+spec:
+  taskRef:
+    name: helloworld-image-from-git
+  inputs:
+    resources:
+    - name: git-source
+      resourceSpec:
+        type: git
+        params:
+        - name: url
+          value: https://github.com/kameshsampath/minikube-helpers

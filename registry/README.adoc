@@ -1,0 +1,125 @@
+= Minikube Registry Helper
+:experimental:
+
+An utility to minikube that can help push and pull from  the minikube registry using custom domain names.
+
+== Start minikube
+
+[source,bash]
+----
+minikube profile demo
+minikube start -p demo --container-runtime=cri-o --memory 8192 --cpus=4 
+----
+
+Wait for the minikube to start 
+
+== Enable internal registry 
+
+[source,bash]
+----
+minikube addons enable registry
+----
+
+The command above will start a internal registry in `kube-system` namespace 
+
+== Configure registry aliases
+
+To be able to push and pull images from internal registry we need to make the registry entry in minikube node's **hosts** file and make them resolvable via **coredns**. 
+
+=== Add entries to host file
+
+All the registry aliases are configured using the configmap `registry-aliases-config.yaml`, we need to create the configmap in `kube-system` namespace:
+
+[source,bash]
+----
+kubectl apply -n kube-system -f registry-aliases-config.yaml
+----
+
+Once the ConfigMap has been created we can run the dameonset `node-etc-hosts-update.yaml` to make in add entries to the minikube node's `/etc/hosts` file with all aliases pointing to internal registrys' __CLUSTER_IP__
+
+[source,bash]
+----
+kubectl apply -n kube-system -f node-etc-hosts-update.yaml
+----
+
+[NOTE]
+====
+Wait for the daemonset to be running before proceeding to next step, the status of the daemonset can be viewed via `kubectl get pods -w`, you can do kbd:[CTRL+C] to end the watch
+====
+
+You can check the mikikube vm's `/etc/hosts` file for the registry aliases entries:
+
+[source,bash]
+----
+$ minikube ssh -- sudo cat /etc/hosts
+127.0.0.1       localhost
+127.0.1.1 regfix
+10.107.180.166  dev.local
+10.107.180.166  example.com
+----
+The above output shows that the daemonset has added the `registryAliases` from the configmap pointing to the interal registry's __CLUSTER_IP__.
+
+=== Update coredns
+
+Update the Kubernetes' coredns to have rewrite rules for aliases.
+
+[source,bash]
+----
+./patch-coredns.sh
+----
+
+A successful patch will have the coredns configmap updated like:
+
+[source,yaml]
+----
+apiVersion: v1
+data:
+  Corefile: |-
+    .:53 {
+        errors
+        health
+        rewrite name dev.local registry.kube-system.svc.cluster.local
+        rewrite name example.com registry.kube-system.svc.cluster.local
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           upstream
+           fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        proxy . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+kind: ConfigMap
+metadata:
+  name: coredns
+----
+
+Once you have successfully patched you can now push and pull from the registry using suffix `dev.local`, `example.com`.
+
+== Testing
+
+To test test the setup you can use the example app, when deploys a https://tekton.dev[Tekton] task and run to build a simple hello world image.
+
+=== Deploy Tekton pipelines
+
+[source,bash]
+----
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+----
+
+Wait for the tekton-pipelines pods to be up and running.
+
+NOTE: You can watch the status using the command `kubectl get pods --namespace tekton-pipelines`
+
+Once tekton pipelines is up you can build and deploy the hello world app:
+
+[source,bash]
+----
+kubectl apply --filename example/app.yaml
+----
+
+If all our configurations are right then you should have a deployment called `helloworld` up and running. If you examine the deployment YAML `kubectl get deployment helloworld -oyaml`, it will be using the image from `dev.local`- which is the alias we configured for the internal registry.
+
