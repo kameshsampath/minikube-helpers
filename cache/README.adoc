@@ -1,0 +1,14 @@
+= Image Cache Helper
+
+An utility script that will allow to cache the container images that are available in minikube setup
+
+== Running script
+
+[source,bash]
+----
+./minikube-cache-images.sh
+----
+
+NOTE: If you set you are MINIKUBE_HOME to different location then please make sure the same one is used before running cache
+
+More info on minikube caching https://github.com/kubernetes/minikube/blob/master/docs/offline.md[minikube offline]
