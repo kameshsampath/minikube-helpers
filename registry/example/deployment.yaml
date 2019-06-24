@@ -1,18 +1,19 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: heloworld
+  name: helloworld
 spec:
   selector:
     matchLabels:
-      app: heloworld
+      app: helloworld
   template:
     metadata:
       labels:
-        app: heloworld
+        app: helloworld
     spec:
       containers:
-      - name: heloworld
+      - name: helloworld
         image: "will be replaced by build"
         resources:
           limits:
@@ -20,15 +21,5 @@ spec:
             cpu: "500m"
         ports:
         - containerPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: heloworld
-spec:
-  selector:
-    app: heloworld
-  ports:
-  - port: 8080
-    targetPort: 8080
+
 

@@ -1,25 +1,4 @@
 ---
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: m2-cache
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 8Gi
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: helloworld-image
-spec:
-  type: image
-  params:
-  - name: url
-    value: dev.local/example/helloworld
----
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
@@ -31,20 +10,11 @@ spec:
       type: git
   params:
     - name: contextDir
-      default: /workspace/git-source
+      default: /workspace/git-source/registry/example
       description: The Docker build context Dir
     - name: mavenMirrorUrl
-      default: ""
+      default: "http://repo1.maven.org/maven2"
       description: The MAVEN_MIRROR_URL url to use
-    - name: mavenCmdArgs
-      default: "clean -DskipTests install"
-      description: The maven command parameter
-    - name: runScript
-      default: "/usr/local/bin/maven-buildah.sh"
-      description: The script to use during 
-    - name: push
-      default: "true"
-      description: Whether to push the image to container registry or not
  outputs:
   resources:
     - name: builtImage
@@ -57,15 +27,15 @@ spec:
       - name: MAVEN_MIRROR_URL
         value: "${inputs.params.mavenMirrorUrl}"
       - name: WORK_DIR
-        value: "${inputs.params.contextDir}"
+        value: "${inputs.params.contextDir}/helloworld"
       - name: PUSH
-        value: "${inputs.params.push}"
+        value: "true"
       - name: MVN_CMD_ARGS
-        value: "${inputs.params.mavenCmdArgs}"
+        value: "clean -DskipTests install"
       - name: DESTINATION_NAME
         value: ${outputs.resources.builtImage.url}
       args:
-       - "${inputs.params.runScript}"
+       - "/usr/local/bin/maven-buildah.sh"
       securityContext:
         privileged: true
         capabilities:
@@ -75,7 +45,6 @@ spec:
           name: m2-cache
         - name: varlibcontainers
           mountPath: /var/lib/containers
-      workingDir: "${inputs.params.contextDir}"
     - name: update-image-url
       image: quay.io/rhdevelopers/tutorial-tools
       imagePullPolicy: IfNotPresent
@@ -84,7 +53,7 @@ spec:
       args:
         - "w"
         - "-i"
-        - "registry/example/deployment.yaml"  
+        - "deployment.yaml"  
         - "spec.template.spec.containers[0].image"
         - "${outputs.resources.builtImage.url}"
         - "-d*"
@@ -97,7 +66,9 @@ spec:
       args:
         - "apply"
         - "--filename"
-        - "registry/example/deployment.yaml"      
+        - "deployment.yaml"     
+        - "--filename"
+        - "service.yaml"   
       workingDir: "${inputs.params.contextDir}"
  volumes:
     - name: m2-cache
@@ -111,13 +82,16 @@ kind: TaskRun
 metadata:
   name: hello-world-maven
 spec:
+  serviceAccount: build-robot
   taskRef:
     name: helloworld-image-from-git
   inputs:
     resources:
     - name: git-source
-      resourceSpec:
-        type: git
-        params:
-        - name: url
-          value: https://github.com/kameshsampath/minikube-helpers
+      resourceRef:
+        name: hello-git-source
+  outputs:
+    resources:
+      - name: builtImage
+        resourceRef:
+          name: helloworld-image
