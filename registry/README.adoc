@@ -8,8 +8,20 @@ An utility to minikube that can help push and pull from the minikube registry us
 [source,bash]
 ----
 minikube profile demo
-minikube start -p demo --container-runtime=cri-o --memory 8192 --cpus=4 
+minikube start -p demo
 ----
+
+NOTE
+====
+
+If you want to use `cri-0` as runtime then:
+
+
+[source,bash]
+----
+minikube start -p demo --container-runtime=cri-o
+----
+====
 
 Wait for the minikube to start before proceeding to further sections.
 

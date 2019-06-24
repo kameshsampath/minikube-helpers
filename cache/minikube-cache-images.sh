@@ -6,7 +6,7 @@ set -o pipefail
 
 eval $(minikube docker-env )
 
-IMAGES=$(minikube ssh -- sudo podman images | grep -v 'sha256' | tail -n +2 | awk '{print $1":"$2}')
+# IMAGES=$(minikube ssh -- sudo podman images | grep -v 'sha256' | tail -n +2 | awk '{print $1":"$2}')
 IMAGES=$(docker images | grep -v 'sha256' | tail -n +2 | awk '{print $1":"$2}')
 
 IFS=$'\n'
@@ -14,7 +14,10 @@ IFS=$'\n'
 for img in $IMAGES 
 do
   echo "Adding $img to cache"
-  minikube cache add "$img" || true
+  if [ "$img" != '<none>:none>' ];
+  then 
+      minikube cache add "$img" || true
+  fi
 done
 
 ## Extra  images
