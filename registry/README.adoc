@@ -11,17 +11,15 @@ minikube profile demo
 minikube start -p demo
 ----
 
-NOTE
+[NOTE]
 ====
-
 If you want to use `cri-0` as runtime then:
-
+====
 
 [source,bash]
 ----
 minikube start -p demo --container-runtime=cri-o
 ----
-====
 
 Wait for the minikube to start before proceeding to further sections.
 
@@ -99,8 +97,6 @@ kubectl apply -n kube-system -f node-etc-hosts-update.yaml
 ====
 Wait for the daemonset to be running before proceeding to next step, the status of the daemonset can be viewed via `kubectl get pods -n kube-system -w`, you can do kbd:[CTRL+C] to end the watch.
 ====
-
-NOTE: The daemonset may take few minutes to run and complete.
 
 You can check the mikikube vm's `/etc/hosts` file for the registry aliases entries:
 
