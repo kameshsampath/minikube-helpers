@@ -65,11 +65,11 @@ registry               ClusterIP   10.111.151.121   <none>        80/TCP        
 
 ## Configure registry aliases
 
-To be able to push and pull images from internal registry we need to make the registry entry in minikube node's **hosts** file and make them resolvable via **coredns**. 
+To be able to push and pull images from internal registry we need to make the registry entry in minikube node's **hosts** file and make them resolvable via **CoreDNS**
 
 ### Add entries to host file
 
-All the registry aliases are configured using the configmap `registry-aliases-config.yaml`, we need to create the configmap in `kube-system` namespace:
+All the registry aliases are configured using the ConfigMap `registry-aliases-config.yaml`, we need to create the ConfigMap in `kube-system` namespace:
 
 ```
 git clone https://github.com/kameshsampath/minikube-helpers
@@ -86,7 +86,7 @@ kubectl apply -n kube-system -f node-etc-hosts-update.yaml
 >
 > **NOTE:**
 >
-> Wait for the daemonset to be running before proceeding to next step, the status of the daemonset can be viewed via `kubectl get pods -n kube-system -w`, you can do CTRL+C to end the watch.
+> Wait for the Daemonset to be running before proceeding to next step, the status of the Daemonset can be viewed via `kubectl get pods -n kube-system -w`, you can do CTRL+C to end the watch.
 >
 
 You can check the mikikube vm's `/etc/hosts` file for the registry aliases entries:
@@ -99,7 +99,7 @@ $ minikube ssh -- sudo cat /etc/hosts
 10.111.151.121  example.com
 ```
 
-The above output shows that the daemonset has added the `registryAliases` from the ConfigMap pointing to the internal registry's __CLUSTER-IP__.
+The above output shows that the Daemonset has added the `registryAliases` from the ConfigMap pointing to the internal registry's __CLUSTER-IP__.
 
 ## Update CoreDNS
 
@@ -109,7 +109,7 @@ Update the Kubernetes' coredns to have rewrite rules for aliases.
 ./patch-coredns.sh
 ```
 
-A successful patch will have the coredns configmap updated like:
+A successful patch will have the coredns ConfigMap updated like:
 
 ```yaml
 apiVersion: v1
@@ -147,7 +147,7 @@ Once you have successfully patched you can now push and pull from the registry u
 
 ## Testing
 
-To test test the setup you can use the example app, when deploys a https://tekton.dev[Tekton] task and run to build a simple hello world image.
+To test test the setup you can use the example app, when deploys a [Tekton](https://tekton.dev) task and run to build a simple hello world image.
 
 ### Deploy Tekton pipelines
 
@@ -158,12 +158,12 @@ kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/r
 Wait for the tekton-pipelines pods to be up and running.
 
 >
-> **NOTE:** 
+> **NOTE:**
 > You can watch the status using the command `kubectl get pods --namespace tekton-pipelines -w`, use CTRL+C to terminate the watch.
 
 Once tekton pipelines is up you can build and deploy the hello world app:
 
-```
+```shell
 kubectl apply --filename example/build-resources.yaml
 kubectl apply --filename example/build.yaml
 ```
