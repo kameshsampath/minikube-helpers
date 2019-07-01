@@ -14,11 +14,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -v -o helloworld
 
 # Use a Docker multi-stage build to create a lean production image.
 # https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
-FROM scratch
+FROM registry.fedoraproject.org/fedora-minimal
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /go/src/github.com/kameshsampath/minikube-helpers/registry/example/helloworld /helloworld
+COPY --from=builder /go/src/github.com/kameshsampath/minikube-helpers/registry/example/helloworld/helloworld /helloworld
 
-# Run the web service on container startup.
-RUN chmod +x /helloworld
 CMD ["/helloworld"]
