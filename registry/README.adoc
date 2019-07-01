@@ -176,8 +176,8 @@ Once tekton pipelines is up you can build and deploy the hello world app:
 
 [source,bash]
 ----
-kubectl apply --filename example/build-resources.yaml && \
-  --filename example/build.yaml
+kubectl apply --filename  https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml 
+kubectl apply --filename example/build.yaml
 ----
 
 If all our configurations are right then you should have a deployment called `helloworld` up and running. If you examine the deployment YAML `kubectl get deployment helloworld -oyaml`, it will be using the image from `dev.local`- which is the alias we configured for the internal registry.

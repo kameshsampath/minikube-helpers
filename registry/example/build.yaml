@@ -1,90 +1,47 @@
----
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: helloworld-image-from-git
+  name: helloworld-from-git-source
 spec:
- inputs:
-  resources:
-    - name: git-source
-      type: git
-  params:
-    - name: contextDir
-      default: /workspace/git-source/registry/example
-      description: The Docker build context Dir
-    - name: mavenMirrorUrl
-      default: "http://repo1.maven.org/maven2"
-      description: The MAVEN_MIRROR_URL url to use
- outputs:
-  resources:
-    - name: builtImage
-      type: image
- steps:
-    - name: buildah-build-push
-      image: quay.io/rhdevelopers/quarkus-java-builder
-      imagePullPolicy: IfNotPresent
+  inputs:
+    resources:
+      - name: git-source
+        type: git
+    params:
+      - name: pathToDockerFile
+        description: The path to the dockerfile to build
+        default: /workspace/git-source/registry/example/helloworld/Dockerfile
+      - name: pathToContext
+        description: >-
+          The build context used by Kaniko
+          (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
+        default: /workspace/git-source/registry/example/helloworld
+  outputs:
+    resources:
+      - name: builtImage
+        type: image
+  steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:v0.9.0
+      # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
       env:
-      - name: MAVEN_MIRROR_URL
-        value: "${inputs.params.mavenMirrorUrl}"
-      - name: WORK_DIR
-        value: "${inputs.params.contextDir}/helloworld"
-      - name: PUSH
-        value: "true"
-      - name: MVN_CMD_ARGS
-        value: "clean -DskipTests install"
-      - name: DESTINATION_NAME
-        value: ${outputs.resources.builtImage.url}
+        - name: "DOCKER_CONFIG"
+          value: "/builder/home/.docker/"
+      command:
+        - /kaniko/executor
       args:
-       - "/usr/local/bin/maven-buildah.sh"
-      securityContext:
-        privileged: true
-        capabilities:
-          add: ["SYS_ADMIN"]
-      volumeMounts:
-        - mountPath: /root/.m2
-          name: m2-cache
-        - name: varlibcontainers
-          mountPath: /var/lib/containers
-    - name: update-image-url
-      image: quay.io/rhdevelopers/tutorial-tools
-      imagePullPolicy: IfNotPresent
-      command: 
-       - "yq"
-      args:
-        - "w"
-        - "-i"
-        - "deployment.yaml"  
-        - "spec.template.spec.containers[0].image"
-        - "${outputs.resources.builtImage.url}"
-        - "-d*"
-      workingDir: "${inputs.params.contextDir}"
-    - name: run-kubectl
-      image: quay.io/rhdevelopers/tutorial-tools
-      imagePullPolicy: IfNotPresent
-      command: 
-       - "kubectl"
-      args:
-        - "apply"
-        - "--filename"
-        - "deployment.yaml"     
-        - "--filename"
-        - "service.yaml"   
-      workingDir: "${inputs.params.contextDir}"
- volumes:
-    - name: m2-cache
-      persistentVolumeClaim:
-        claimName: m2-cache
-    - name: varlibcontainers
-      emptyDir: {}
+        - --dockerfile=${inputs.params.pathToDockerFile}
+        - --destination=${outputs.resources.builtImage.url}
+        - --context=${inputs.params.pathToContext}
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: hello-world-maven
+  name: hello-world
 spec:
   serviceAccount: build-robot
   taskRef:
-    name: helloworld-image-from-git
+    name: helloworld-from-git-source
   inputs:
     resources:
     - name: git-source

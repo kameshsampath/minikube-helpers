@@ -18,17 +18,6 @@ roleRef:
   name: cluster-admin # this must match the name of the Role or ClusterRole you wish to bind to
   apiGroup: rbac.authorization.k8s.io
 ---
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: m2-cache
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 8Gi
----
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
