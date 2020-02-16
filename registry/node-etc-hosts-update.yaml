@@ -3,6 +3,9 @@ kind: DaemonSet
 metadata:
   name: registry-aliases-hosts-update
   namespace: kube-system
+  labels:
+    kubernetes.io/minikube-addons: registry-aliases
+    addonmanager.kubernetes.io/mode: Reconcile
 spec:
   selector:
     matchLabels:

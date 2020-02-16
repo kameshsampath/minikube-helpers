@@ -61,33 +61,18 @@ registry               ClusterIP   10.111.151.121   <none>        80/TCP        
 >
 > **NOTE:**
 > Please make a note of the CLUSTER-IP of `registry` service
-> 
+
 
 ## Configure registry aliases
 
 To be able to push and pull images from internal registry we need to make the registry entry in minikube node's **hosts** file and make them resolvable via **CoreDNS**
 
-### Add entries to host file
-
-All the registry aliases are configured using the ConfigMap `registry-aliases-config.yaml`, we need to create the ConfigMap in `kube-system` namespace:
-
-```
-git clone https://github.com/kameshsampath/minikube-helpers
-cd registry
-kubectl apply -n kube-system -f registry-aliases-config.yaml
-```
-
-Once the ConfigMap has been created we can run the dameonset `node-etc-hosts-update.yaml` to make in add entries to the minikube node's `/etc/hosts` file with all aliases pointing to internal registrys' __CLUSTER_IP__
-
 ```shell
-kubectl apply -n kube-system -f node-etc-hosts-update.yaml
+kubectl apply -n kube-system \
+  -f registry-aliases-config.yaml \
+  -f node-etc-hosts-update.yaml \
+  -f patch-coredns-job.yaml
 ```
-
->
-> **NOTE:**
->
-> Wait for the Daemonset to be running before proceeding to next step, the status of the Daemonset can be viewed via `kubectl get pods -n kube-system -w`, you can do CTRL+C to end the watch.
->
 
 You can check the mikikube vm's `/etc/hosts` file for the registry aliases entries:
 
@@ -95,21 +80,17 @@ You can check the mikikube vm's `/etc/hosts` file for the registry aliases entri
 $ minikube ssh -- sudo cat /etc/hosts
 127.0.0.1       localhost
 127.0.1.1 demo
-10.111.151.121  dev.local
 10.111.151.121  example.com
+10.111.151.121  example.com
+10.111.151.121  test.com
+10.111.151.121  test.org
 ```
 
 The above output shows that the Daemonset has added the `registryAliases` from the ConfigMap pointing to the internal registry's __CLUSTER-IP__.
 
 ## Update CoreDNS
 
-Update the Kubernetes' coredns to have rewrite rules for aliases.
-
-```shell
-./patch-coredns.sh
-```
-
-A successful patch will have the coredns ConfigMap updated like:
+The coreDNS would have been automatically updated by the patch-cordns-job. A successful job run will have coredns ConfigMap updated like:
 
 ```yaml
 apiVersion: v1
@@ -118,8 +99,10 @@ data:
     .:53 {
         errors
         health
-        rewrite name dev.local registry.kube-system.svc.cluster.local
         rewrite name example.com registry.kube-system.svc.cluster.local
+        rewrite name example.org registry.kube-system.svc.cluster.local
+        rewrite name test.com registry.kube-system.svc.cluster.local
+        rewrite name test.org registry.kube-system.svc.cluster.local
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
            upstream
@@ -143,7 +126,7 @@ To verify it run the following command:
 kubectl get cm -n kube-system coredns -o yaml
 ```
 
-Once you have successfully patched you can now push and pull from the registry using suffix `dev.local`, `example.com`.
+Once you have successfully patched you can now push and pull from the registry using suffix `example.com`, `example.org`,`test.com` and `test.org`.
 
 ## Testing
 

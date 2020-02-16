@@ -35,7 +35,7 @@ spec:
         - --destination=${outputs.resources.builtImage.url}
         - --context=${inputs.params.pathToContext}
     - name: update-image
-      image: quay.io/rhdevelopers/tutorial-tools
+      image: quay.io/rhdevelopers/tutorial-tools:0.0.3
       command:
         - yq
       args:
@@ -47,7 +47,7 @@ spec:
         - "${outputs.resources.builtImage.url}"
       workingDir: /workspace/git-source/registry/example
     - name: deploy-app
-      image: quay.io/rhdevelopers/tutorial-tools
+      image: quay.io/rhdevelopers/tutorial-tools:0.0.3
       command:
         - kubectl
       args:
