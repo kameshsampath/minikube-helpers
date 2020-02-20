@@ -130,38 +130,25 @@ Once you have successfully patched you can now push and pull from the registry u
 
 ## Testing
 
-To test test the setup you can use the example app, when deploys a [Tekton](https://tekton.dev) task and run to build a simple hello world image.
-
-### Deploy Tekton pipelines
+You can verify the deployment end to end using the example [application](https://github.com/kameshsampath/minikube-registry-aliases-demo).
 
 ```shell
-kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+git clone https://github.com/kameshsampath/minikube-registry-aliases-demo
+cd minikube-registry-aliases-demo
 ```
 
-Wait for the tekton-pipelines pods to be up and running.
+Make sure you set the docker context using `eval $(minikube -p demo docker-env)`
 
+Deploy the application using [Skaffold](https://skaffold.dev):
+
+```shell
+skaffold dev --port-forward
+```
+
+Once the application is running try doing `curl localhost:8080` to see the `Hello World` response
+
+You can also update [skaffold.yaml](./skaffold.yaml) and [app.yaml](.k8s/app.yaml), to use `test.org`, `test.com` or `example.org` as container registry urls, and see all the container image names resolves to internal registry, resulting in successful build and deployment.
+
+> **NOTE**:
 >
-> **NOTE:**
-> You can watch the status using the command `kubectl get pods --namespace tekton-pipelines -w`, use CTRL+C to terminate the watch.
-
-Once tekton pipelines is up you can build and deploy the hello world app:
-
-```shell
-kubectl apply --filename example/build-resources.yaml
-kubectl apply --filename example/build.yaml
-```
-
-If all our configurations are right then you should have a deployment called `helloworld` up and running. If you examine the deployment YAML `kubectl get deployment helloworld -oyaml`, it will be using the image from `dev.local`- which is the alias we configured for the internal registry.
-
->
-> **NOTE:**
-> The first build might take time as the images will pulled for the first time
-
-## Cleanup
-
-```shell
-kubectl delete --filename example/build-resources.yaml \
-  --filename example/build.yaml
-kubectl delete --filename example/deployment.yaml  \
-  --filename example/service.yaml
-```
+> You can also update [skaffold.yaml](./skaffold.yaml) and [app. yaml](.k8s/app.yaml), to use `test.org`, `test.com` or > `example.org` as container registry urls, and see all the > container image names resolves to internal registry, resulting in successful build and deployment.
